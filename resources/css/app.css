@@ -1,0 +1,15 @@
+/*
+|--------------------------------------------------------------------------
+| Tailwind entry stylesheet
+|--------------------------------------------------------------------------
+|
+| This file is the entrypoint for Vite/PostCSS. Use the Tailwind directives
+| below so the PostCSS `tailwindcss` plugin can generate the utility CSS.
+|
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Add any project-specific custom styles below, or import other CSS files. */
