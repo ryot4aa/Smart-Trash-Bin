@@ -50,7 +50,7 @@
                             </div>
                         @endif
             <!-- Grafik untuk Tukang -->
-            <div class="bg-white rounded-2xl shadow p-6 mb-8">
+            <div class="bg-white rounded-2xl shadow p-6 mb-8" style="max-width: 1200px;">
                 <h3 class="text-lg font-semibold text-black mb-4">Grafik Ketinggian Sampah</h3>
                 <canvas id="tukangSensorChart" height="200" class="w-full"></canvas>
                 <div class="mt-4 flex items-center justify-between">

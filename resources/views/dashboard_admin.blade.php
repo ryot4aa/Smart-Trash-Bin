@@ -49,7 +49,7 @@
         <section class="flex-1 p-8 bg-[#fafbfc] min-h-[calc(100vh-80px)]">
             @include('partials.notifikasi', ['notifikasis' => $notifikasis])
             <!-- Grafik untuk Admin -->
-            <div class="bg-white rounded-2xl shadow p-6 mb-8">
+            <div class="bg-white rounded-2xl shadow p-6 mb-8" style="max-width: 1200px;">
                 <h3 class="text-lg font-semibold text-black mb-4">Grafik Ketinggian Sampah</h3>
                 <canvas id="adminSensorChart" height="200" class="w-full"></canvas>
                 <div class="mt-4 flex items-center justify-between">
