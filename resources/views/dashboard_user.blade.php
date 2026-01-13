@@ -73,7 +73,26 @@
                             @endif
                         </div>
             <div id="content-dashboard" class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-                <!-- Tabel status device user sudah ditampilkan, tabel lama dihapus agar tidak dobel -->
+                <!-- Grafik dan ringkasan device -->
+                <div class="bg-white rounded-2xl shadow p-6">
+                    <h3 class="text-lg font-semibold text-[#f6c90e] mb-4">Grafik Ketinggian Sampah</h3>
+                    <canvas id="sensorChart" height="200" class="w-full"></canvas>
+                    <div class="mt-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Status LED</p>
+                            <div id="ledStatus" class="px-6 py-3 rounded-lg text-white font-bold text-lg shadow bg-gray-400">Unknown</div>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Device terpilih</p>
+                            <div id="selectedDeviceName" class="font-semibold text-gray-800">-</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Placeholder untuk konten lain (opsional) -->
+                <div class="bg-white rounded-2xl shadow p-6">
+                    <h3 class="text-lg font-semibold text-[#f6c90e] mb-4">Ringkasan</h3>
+                    <p class="text-sm text-gray-600">Daftar tong sampah akan ditampilkan pada tabel di bawah.</p>
+                </div>
             </div>
             <div id="content-pendaftaran" class="bg-white rounded-2xl shadow p-6 mb-10 hidden">
                 <h2 class="text-xl font-semibold mb-4 text-[#f6c90e]">Daftarkan Tong Sampah Baru</h2>
@@ -159,12 +178,12 @@
         async function fetchSensorData(deviceId = null) {
             let url = '/api/sensor-readings';
             if (deviceId) url += '?device_id=' + deviceId;
-            const response = await fetch(url);
+            const response = await fetch(url, { credentials: 'same-origin' });
             return response.json();
         }
         let userDevicesCache = [];
         async function fetchUserDevices() {
-            const response = await fetch('/api/my-devices');
+            const response = await fetch('/api/my-devices', { credentials: 'same-origin' });
             const data = await response.json();
             userDevicesCache = data;
             return data;
@@ -172,46 +191,60 @@
         async function fetchLedStatus(deviceId = null) {
             let url = '/api/devices';
             if (deviceId) url += '?device_id=' + deviceId;
-            const response = await fetch(url);
+            const response = await fetch(url, { credentials: 'same-origin' });
             return response.json();
         }
-        const ctx = document.getElementById('sensorChart').getContext('2d');
-        let sensorChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Ketinggian Sampah (cm)',
-                    data: [],
-                    backgroundColor: 'rgba(246,201,14,0.2)',
-                    borderColor: 'rgba(246,201,14,1)',
-                    borderWidth: 2,
-                    fill: true,
-                    pointRadius: 4,
-                    pointBackgroundColor: 'rgba(246,201,14,1)'
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        labels: { color: '#f6c90e', font: { weight: 'bold' } }
-                    }
+        let sensorChart;
+        (function initChart() {
+            const canvasEl = document.getElementById('sensorChart');
+            if (!canvasEl || !canvasEl.getContext) {
+                console.warn('sensorChart canvas not found — chart disabled');
+                sensorChart = {
+                    data: { labels: [], datasets: [{ label: 'Ketinggian Sampah (cm)', data: [] }] },
+                    update: function() {}
+                };
+                return;
+            }
+            const ctx = canvasEl.getContext('2d');
+            sensorChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Ketinggian Sampah (cm)',
+                        data: [],
+                        backgroundColor: 'rgba(246,201,14,0.2)',
+                        borderColor: 'rgba(246,201,14,1)',
+                        borderWidth: 2,
+                        fill: true,
+                        pointRadius: 4,
+                        pointBackgroundColor: 'rgba(246,201,14,1)'
+                    }]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { color: '#f6c90e' }
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#f6c90e', font: { weight: 'bold' } }
+                        }
                     },
-                    x: {
-                        ticks: { color: '#f6c90e' }
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#f6c90e' }
+                        },
+                        x: {
+                            ticks: { color: '#f6c90e' }
+                        }
                     }
                 }
-            }
-        });
+            });
+        })();
         async function updateChartAndStatus(deviceId = null) {
             const sensorData = await fetchSensorData(deviceId);
             const ledData = await fetchLedStatus(deviceId);
+            // Normalize response shape: API may return { data: [...] } or an array
+            const devicesList = Array.isArray(ledData) ? ledData : (ledData?.data ?? []);
             sensorChart.data.labels = sensorData.map(d => new Date(d.timestamp).toLocaleTimeString());
             sensorChart.data.datasets[0].data = sensorData.map(d => d.value);
             // Update label grafik sesuai nama tong
@@ -225,13 +258,22 @@
             sensorChart.data.datasets[0].label = label;
             sensorChart.update();
             // Ambil status LED dari API, jika tidak ada fallback ke cache
-            let ledStatus = ledData[0]?.led_status;
+            let ledStatus = devicesList[0]?.led_status;
             if (!ledStatus && userDevicesCache.length > 0 && deviceId) {
                 const device = userDevicesCache.find(d => d.id == deviceId);
                 ledStatus = device?.led_status || 'Unknown';
             }
             const ledStatusElem = document.getElementById('ledStatus');
-            ledStatusElem.textContent = ledStatus;
+            if (ledStatusElem) {
+                ledStatusElem.textContent = ledStatus;
+                ledStatusElem.className = `px-6 py-3 rounded-lg text-white font-bold text-lg shadow ${String(ledStatus).toLowerCase() === 'on' ? 'bg-green-500' : String(ledStatus).toLowerCase() === 'off' ? 'bg-red-500' : 'bg-gray-400'}`;
+            }
+            // Update selected device name badge
+            const selectedNameEl = document.getElementById('selectedDeviceName');
+            if (selectedNameEl && deviceId && userDevicesCache.length > 0) {
+                const deviceObj = userDevicesCache.find(d => d.id == deviceId);
+                selectedNameEl.textContent = deviceObj?.nama_device ?? '-';
+            }
             ledStatusElem.className = `px-6 py-3 rounded-lg text-white font-bold text-lg shadow ${String(ledStatus).toLowerCase() === 'on' ? 'bg-green-500' : String(ledStatus).toLowerCase() === 'off' ? 'bg-red-500' : 'bg-gray-400'}`;
         }
         // Klik baris tabel untuk update grafik
