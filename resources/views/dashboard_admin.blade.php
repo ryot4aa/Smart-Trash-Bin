@@ -48,6 +48,21 @@
         <!-- Content -->
         <section class="flex-1 p-8 bg-[#fafbfc] min-h-[calc(100vh-80px)]">
             @include('partials.notifikasi', ['notifikasis' => $notifikasis])
+            <!-- Grafik untuk Admin -->
+            <div class="bg-white rounded-2xl shadow p-6 mb-8">
+                <h3 class="text-lg font-semibold text-black mb-4">Grafik Ketinggian Sampah</h3>
+                <canvas id="adminSensorChart" height="200" class="w-full"></canvas>
+                <div class="mt-4 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600">Status Buzzer</p>
+                        <div id="adminBuzzerStatus" class="px-6 py-3 rounded-lg text-white font-bold text-lg shadow bg-gray-400">Unknown</div>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Device terpilih</p>
+                        <div id="adminSelectedDeviceName" class="font-semibold text-gray-800">-</div>
+                    </div>
+                </div>
+            </div>
             <div id="menu-user" class="menu-content">
                 @include('partials.admin_user_table')
             </div>
@@ -90,6 +105,87 @@
     document.addEventListener('click', function(e) {
         if (!document.getElementById('profileDropdownBtn').contains(e.target) && !document.getElementById('profileDropdown').contains(e.target)) {
             document.getElementById('profileDropdown').classList.add('hidden');
+        }
+    });
+    // Chart initialization for admin
+    let adminSensorChart;
+    let adminSelectedDeviceId = null;
+    let adminDevicesCache = [];
+    
+    (function initAdminChart() {
+        const canvasEl = document.getElementById('adminSensorChart');
+        if (!canvasEl || !canvasEl.getContext) {
+            console.warn('adminSensorChart canvas not found');
+            adminSensorChart = { data: { labels: [], datasets: [{ label: 'Ketinggian Sampah (cm)', data: [] }] }, update: function() {} };
+            return;
+        }
+        const ctx = canvasEl.getContext('2d');
+        adminSensorChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Ketinggian Sampah (cm)',
+                    data: [],
+                    backgroundColor: 'rgba(246,201,14,0.2)',
+                    borderColor: 'rgba(246,201,14,1)',
+                    borderWidth: 2,
+                    fill: true,
+                    pointRadius: 4,
+                    pointBackgroundColor: 'rgba(246,201,14,1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { labels: { color: '#f6c90e', font: { weight: 'bold' } } } },
+                scales: { y: { beginAtZero: true, ticks: { color: '#f6c90e' } }, x: { ticks: { color: '#f6c90e' } } }
+            }
+        });
+    })();
+    
+    async function fetchAdminSensorData(deviceId = null) {
+        let url = '/api/sensor-readings';
+        if (deviceId) url += '?device_id=' + deviceId;
+        const response = await fetch(url, { credentials: 'same-origin' });
+        return response.json();
+    }
+    
+    async function fetchAllDevices() {
+        const response = await fetch('/api/devices', { credentials: 'same-origin' });
+        const data = await response.json();
+        adminDevicesCache = Array.isArray(data) ? data : (data?.data ?? []);
+        return adminDevicesCache;
+    }
+    
+    async function updateAdminChart(deviceId = null) {
+        const sensorData = await fetchAdminSensorData(deviceId);
+        const devices = await fetchAllDevices();
+        adminSensorChart.data.labels = sensorData.map(d => new Date(d.timestamp).toLocaleTimeString());
+        adminSensorChart.data.datasets[0].data = sensorData.map(d => d.value);
+        let label = 'Ketinggian Sampah (cm)';
+        if (deviceId && adminDevicesCache.length > 0) {
+            const device = adminDevicesCache.find(d => d.id == deviceId);
+            if (device && device.nama_device) label = device.nama_device + ' (cm)';
+        }
+        adminSensorChart.data.datasets[0].label = label;
+        adminSensorChart.update();
+        let buzzerStatus = adminDevicesCache[0]?.buzzer_status;
+        const buzzerEl = document.getElementById('adminBuzzerStatus');
+        if (buzzerEl) {
+            buzzerEl.textContent = buzzerStatus || 'Unknown';
+            buzzerEl.className = `px-6 py-3 rounded-lg text-white font-bold text-lg shadow ${String(buzzerStatus).toLowerCase() === 'on' ? 'bg-green-500' : String(buzzerStatus).toLowerCase() === 'off' ? 'bg-red-500' : 'bg-gray-400'}`;
+        }
+        const nameEl = document.getElementById('adminSelectedDeviceName');
+        if (nameEl && deviceId && adminDevicesCache.length > 0) {
+            const device = adminDevicesCache.find(d => d.id == deviceId);
+            nameEl.textContent = device?.nama_device ?? '-';
+        }
+    }
+    
+    fetchAllDevices().then(devices => {
+        if (devices.length > 0) {
+            adminSelectedDeviceId = devices[0].id;
+            updateAdminChart(adminSelectedDeviceId);
         }
     });
 </script>

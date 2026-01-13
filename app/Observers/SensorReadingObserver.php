@@ -43,9 +43,9 @@ class SensorReadingObserver
         $volumeThreshold = 80; // misal 80% penuh
         $gasThreshold = 100;   // misal 100 ppm
 
-        // Update status buzzer (pakai kolom led_status sebagai buzzer)
+        // Update status buzzer
         if ($reading->volume !== null) {
-            $device->led_status = $reading->volume >= $volumeThreshold ? 'on' : 'off';
+            $device->buzzer_status = $reading->volume >= $volumeThreshold ? 'on' : 'off';
             $device->save();
         }
 

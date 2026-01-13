@@ -68,7 +68,7 @@ class DeviceController extends Controller
         // Set default values for optional fields when form tidak mengirimkannya
         $validated['tipe'] = $validated['tipe'] ?? 'smartbin';
         $validated['status'] = $validated['status'] ?? 'pending';
-        $validated['led_status'] = $validated['led_status'] ?? 'off';
+        $validated['buzzer_status'] = $validated['buzzer_status'] ?? 'off';
         $validated['cleaning_status'] = $validated['cleaning_status'] ?? 'belum';
 
         $device = Device::create($validated);
@@ -183,7 +183,7 @@ class DeviceController extends Controller
         ]);
     }
     /**
-     * Control actuator (LED) pada device
+     * Control actuator (Buzzer) pada device
      */
     public function control(Request $request, Device $device)
     {
@@ -202,15 +202,15 @@ class DeviceController extends Controller
             ], 403);
         }
         $validated = $request->validate([
-            'led' => 'required|in:on,off'
+            'buzzer' => 'required|in:on,off'
         ]);
-        $device->led_status = $validated['led'];
+        $device->buzzer_status = $validated['buzzer'];
         $device->save();
         return response()->json([
             'success' => true,
-            'message' => 'LED status updated',
+            'message' => 'Buzzer status updated',
             'data' => [
-                'led_status' => $device->led_status
+                'buzzer_status' => $device->buzzer_status
             ]
         ]);
     }

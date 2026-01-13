@@ -79,8 +79,8 @@
                     <canvas id="sensorChart" height="200" class="w-full"></canvas>
                     <div class="mt-4 flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-gray-600">Status LED</p>
-                            <div id="ledStatus" class="px-6 py-3 rounded-lg text-white font-bold text-lg shadow bg-gray-400">Unknown</div>
+                            <p class="text-sm text-gray-600">Status Buzzer</p>
+                            <div id="buzzerStatus" class="px-6 py-3 rounded-lg text-white font-bold text-lg shadow bg-gray-400">Unknown</div>
                         </div>
                         <div>
                             <p class="text-sm text-gray-600">Device terpilih</p>
@@ -252,16 +252,16 @@
             }
             sensorChart.data.datasets[0].label = label;
             sensorChart.update();
-            // Ambil status LED dari API, jika tidak ada fallback ke cache
-            let ledStatus = devicesList[0]?.led_status;
-            if (!ledStatus && userDevicesCache.length > 0 && deviceId) {
+            // Ambil status Buzzer dari API, jika tidak ada fallback ke cache
+            let buzzerStatus = devicesList[0]?.buzzer_status;
+            if (!buzzerStatus && userDevicesCache.length > 0 && deviceId) {
                 const device = userDevicesCache.find(d => d.id == deviceId);
-                ledStatus = device?.led_status || 'Unknown';
+                buzzerStatus = device?.buzzer_status || 'Unknown';
             }
-            const ledStatusElem = document.getElementById('ledStatus');
-            if (ledStatusElem) {
-                ledStatusElem.textContent = ledStatus;
-                ledStatusElem.className = `px-6 py-3 rounded-lg text-white font-bold text-lg shadow ${String(ledStatus).toLowerCase() === 'on' ? 'bg-green-500' : String(ledStatus).toLowerCase() === 'off' ? 'bg-red-500' : 'bg-gray-400'}`;
+            const buzzerStatusElem = document.getElementById('buzzerStatus');
+            if (buzzerStatusElem) {
+                buzzerStatusElem.textContent = buzzerStatus;
+                buzzerStatusElem.className = `px-6 py-3 rounded-lg text-white font-bold text-lg shadow ${String(buzzerStatus).toLowerCase() === 'on' ? 'bg-green-500' : String(buzzerStatus).toLowerCase() === 'off' ? 'bg-red-500' : 'bg-gray-400'}`;
             }
             // Update selected device name badge
             const selectedNameEl = document.getElementById('selectedDeviceName');

@@ -49,6 +49,21 @@
                                 @include('partials.notifikasi', ['notifikasis' => $notifikasis])
                             </div>
                         @endif
+            <!-- Grafik untuk Tukang -->
+            <div class="bg-white rounded-2xl shadow p-6 mb-8">
+                <h3 class="text-lg font-semibold text-black mb-4">Grafik Ketinggian Sampah</h3>
+                <canvas id="tukangSensorChart" height="200" class="w-full"></canvas>
+                <div class="mt-4 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600">Status Buzzer</p>
+                        <div id="tukangBuzzerStatus" class="px-6 py-3 rounded-lg text-white font-bold text-lg shadow bg-gray-400">Unknown</div>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Device terpilih</p>
+                        <div id="tukangSelectedDeviceName" class="font-semibold text-gray-800">-</div>
+                    </div>
+                </div>
+            </div>
             <div class="bg-white rounded-2xl shadow p-6">
                 <h2 class="text-xl font-semibold mb-2 text-black text-center">Daftar Tempat Sampah</h2>
                 <div class="mb-4 w-full">
@@ -245,6 +260,104 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Chart initialization for tukang
+let tukangSensorChart;
+let tukangSelectedDeviceId = null;
+let tukangDevicesCache = [];
+
+(function initTukangChart() {
+    const canvasEl = document.getElementById('tukangSensorChart');
+    if (!canvasEl || !canvasEl.getContext) {
+        console.warn('tukangSensorChart canvas not found');
+        tukangSensorChart = { data: { labels: [], datasets: [{ label: 'Ketinggian Sampah (cm)', data: [] }] }, update: function() {} };
+        return;
+    }
+    const ctx = canvasEl.getContext('2d');
+    tukangSensorChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Ketinggian Sampah (cm)',
+                data: [],
+                backgroundColor: 'rgba(246,201,14,0.2)',
+                borderColor: 'rgba(246,201,14,1)',
+                borderWidth: 2,
+                fill: true,
+                pointRadius: 4,
+                pointBackgroundColor: 'rgba(246,201,14,1)'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { labels: { color: '#f6c90e', font: { weight: 'bold' } } } },
+            scales: { y: { beginAtZero: true, ticks: { color: '#f6c90e' } }, x: { ticks: { color: '#f6c90e' } } }
+        }
+    });
+})();
+
+async function fetchTukangSensorData(deviceId = null) {
+    let url = '/api/sensor-readings';
+    if (deviceId) url += '?device_id=' + deviceId;
+    const response = await fetch(url, { credentials: 'same-origin' });
+    return response.json();
+}
+
+async function fetchTukangAllDevices() {
+    const response = await fetch('/api/devices', { credentials: 'same-origin' });
+    const data = await response.json();
+    tukangDevicesCache = Array.isArray(data) ? data : (data?.data ?? []);
+    return tukangDevicesCache;
+}
+
+async function updateTukangChart(deviceId = null) {
+    const sensorData = await fetchTukangSensorData(deviceId);
+    const devices = await fetchTukangAllDevices();
+    tukangSensorChart.data.labels = sensorData.map(d => new Date(d.timestamp).toLocaleTimeString());
+    tukangSensorChart.data.datasets[0].data = sensorData.map(d => d.value);
+    let label = 'Ketinggian Sampah (cm)';
+    if (deviceId && tukangDevicesCache.length > 0) {
+        const device = tukangDevicesCache.find(d => d.id == deviceId);
+        if (device && device.nama_device) label = device.nama_device + ' (cm)';
+    }
+    tukangSensorChart.data.datasets[0].label = label;
+    tukangSensorChart.update();
+    let buzzerStatus = tukangDevicesCache[0]?.buzzer_status;
+    const buzzerEl = document.getElementById('tukangBuzzerStatus');
+    if (buzzerEl) {
+        buzzerEl.textContent = buzzerStatus || 'Unknown';
+        buzzerEl.className = `px-6 py-3 rounded-lg text-white font-bold text-lg shadow ${String(buzzerStatus).toLowerCase() === 'on' ? 'bg-green-500' : String(buzzerStatus).toLowerCase() === 'off' ? 'bg-red-500' : 'bg-gray-400'}`;
+    }
+    const nameEl = document.getElementById('tukangSelectedDeviceName');
+    if (nameEl && deviceId && tukangDevicesCache.length > 0) {
+        const device = tukangDevicesCache.find(d => d.id == deviceId);
+        nameEl.textContent = device?.nama_device ?? '-';
+    }
+}
+
+fetchTukangAllDevices().then(devices => {
+    if (devices.length > 0) {
+        tukangSelectedDeviceId = devices[0].id;
+        updateTukangChart(tukangSelectedDeviceId);
+    }
+});
+
+// Add click handlers to device rows
+setTimeout(() => {
+    const rows = document.querySelectorAll('#deviceTableBody tr');
+    rows.forEach(row => {
+        row.addEventListener('click', async () => {
+            const deviceId = row.querySelector('.device-id')?.textContent;
+            if (deviceId) {
+                tukangSelectedDeviceId = parseInt(deviceId);
+                await updateTukangChart(tukangSelectedDeviceId);
+            }
+        });
+    });
+}, 500);
 </script>
 @endsection
 @section('scripts')

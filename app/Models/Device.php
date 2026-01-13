@@ -13,13 +13,13 @@ class Device extends Model
         'tipe',
         'status',
         'battery',
-        'led_status',
+        'buzzer_status',
         'cleaning_status',
     ];
 
     protected $casts = [
         'battery' => 'integer',
-        'led_status' => 'string',
+        'buzzer_status' => 'string',
         'cleaning_status' => 'string',
     ];
 
