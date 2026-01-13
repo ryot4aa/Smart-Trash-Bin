@@ -72,7 +72,7 @@
                                 @include('partials.notifikasi', ['notifikasis' => $notifikasis])
                             @endif
                         </div>
-            <div id="content-dashboard" class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+            <div id="content-dashboard" class="mb-10">
                 <!-- Grafik dan ringkasan device -->
                 <div class="bg-white rounded-2xl shadow p-6">
                     <h3 class="text-lg font-semibold text-[#f6c90e] mb-4">Grafik Ketinggian Sampah</h3>
@@ -87,11 +87,6 @@
                             <div id="selectedDeviceName" class="font-semibold text-gray-800">-</div>
                         </div>
                     </div>
-                </div>
-                <!-- Placeholder untuk konten lain (opsional) -->
-                <div class="bg-white rounded-2xl shadow p-6">
-                    <h3 class="text-lg font-semibold text-[#f6c90e] mb-4">Ringkasan</h3>
-                    <p class="text-sm text-gray-600">Daftar tong sampah akan ditampilkan pada tabel di bawah.</p>
                 </div>
             </div>
             <div id="content-pendaftaran" class="bg-white rounded-2xl shadow p-6 mb-10 hidden">
