@@ -1,10 +1,14 @@
 @extends('layouts.app')
 
 @section('content')
+<style>
+    /* Pastikan halaman tukang selalu menggunakan background terang untuk menghindari strip gelap di tepi */
+    html, body { background-color: #fafbfc !important; }
+</style>
 <div class="flex min-h-screen">
     <!-- Sidebar -->
-    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col h-screen py-8 px-4 shadow-sm">
-        <div class="flex flex-col h-screen">
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col min-h-screen py-4 px-4 shadow-sm" style="height:100vh;">
+        <div class="flex flex-col h-full justify-between">
             <div>
                 <div class="flex flex-col items-center mb-8">
                     <div class="flex items-center gap-3 mb-4 px-2">
@@ -19,7 +23,7 @@
                 </nav>
             </div>
             <div class="flex-1"></div>
-            <div class="text-xs text-black text-center mt-auto">&copy; 2025 SmartBin</div>
+            <div class="text-xs text-black text-center">&copy; 2025 SmartBin</div>
         </div>
     </aside>
     <!-- Main Content -->
@@ -44,13 +48,13 @@
         </header>
         <!-- Content -->
         <section class="flex-1 p-8 bg-[#fafbfc] min-h-[calc(100vh-80px)]">
-                        @if(isset($notifikasis) && count($notifikasis) > 0)
-                            <div class="mb-6">
-                                @include('partials.notifikasi', ['notifikasis' => $notifikasis])
-                            </div>
-                        @endif
+            @if(isset($notifikasis) && count($notifikasis) > 0)
+                <div class="mb-6">
+                    @include('partials.notifikasi', ['notifikasis' => $notifikasis])
+                </div>
+            @endif
             <!-- Grafik untuk Tukang -->
-            <div class="bg-white rounded-2xl shadow p-6 mb-8" style="max-width: 1200px;">
+            <div class="bg-white rounded-2xl shadow p-6 mb-10">
                 <h3 class="text-lg font-semibold text-black mb-4">Grafik Ketinggian Sampah</h3>
                 <canvas id="tukangSensorChart" height="200" class="w-full"></canvas>
                 <div class="mt-4 flex items-center justify-between">
@@ -91,161 +95,47 @@
                         </thead>
                         <tbody id="deviceTableBody" class="divide-y divide-blue-100">
                             @forelse($devices as $device)
-                            <tr class='hover:bg-[#fff7e6] transition'>
-                                <td class='py-2 px-6 device-id'>{{ $device->id }}</td>
-                                <td class='py-2 px-6 device-nama'>{{ $device->nama_device ?? '-' }}</td>
-                                <td class='py-2 px-6 device-user'>{{ $device->user->name ?? '-' }}</td>
-                                <td class='py-2 px-6'>{{ $device->lokasi ?? '-' }}</td>
-                                <td class='py-2 px-6'>
-                                    @if($device->status === 'pending')
-                                        <span class="text-yellow-500 font-semibold">Pending</span>
-                                    @elseif($device->status === 'online')
-                                        <span class="text-green-600 font-semibold">Online</span>
-                                    @else
-                                        <span class="text-red-600 font-semibold">Offline</span>
-                                    @endif
-                                </td>
-                                <td class='py-2 px-6'>{{ $device->latestReading->gas ?? '-' }}</td>
-                                <td class='py-2 px-6'>{{ isset($device->latestReading->volume) ? $device->latestReading->volume . '%' : '-' }}</td>
-                                <td class='py-2 px-6'>
-                                    <form method="POST" action="{{ route('tukang.cleaning.update', $device->id) }}">
-                                        @csrf
-                                        <select name="status" class="border rounded px-2 py-1 text-sm font-semibold {{ isset($device->cleaning_status) && $device->cleaning_status === 'sudah' ? 'text-green-600' : 'text-red-600' }}" onchange="this.form.submit()">
-                                            <option value="belum" {{ (!isset($device->cleaning_status) || $device->cleaning_status === 'belum') ? 'selected' : '' }}>Belum</option>
-                                            <option value="sudah" {{ (isset($device->cleaning_status) && $device->cleaning_status === 'sudah') ? 'selected' : '' }}>Sudah</option>
-                                        </select>
-                                    </form>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="9" class="text-center py-4 text-gray-400">Data belum ada.</td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-            <!-- Data User mirip admin -->
-            <div class="bg-white rounded-lg shadow p-6 mt-8">
-                <h2 class="text-lg font-bold mb-4">Data User</h2>
-                <div class="mb-4">
-                    <input type="text" id="search-user" placeholder="Cari user..." class="border rounded px-3 py-2 w-full" />
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full bg-white">
-                        <thead>
-                            <tr>
-                                <th class="px-4 py-2 bg-white text-gray-800 font-semibold border-b text-center">Nama</th>
-                                <th class="px-4 py-2 bg-white text-gray-800 font-semibold border-b text-center">Email</th>
-                                <th class="px-4 py-2 bg-white text-gray-800 font-semibold border-b">Jumlah Tong</th>
-                                <th class="px-4 py-2 bg-white text-gray-800 font-semibold border-b">Status</th>
-                                <th class="px-4 py-2 bg-white text-gray-800 font-semibold border-b">Kadar Gas</th>
-                                <th class="px-4 py-2 bg-white text-gray-800 font-semibold border-b">Presentase Sampah</th>
-                                <th class="px-4 py-2 bg-white text-gray-800 font-semibold border-b">Status Clean</th>
-                            </tr>
-                        </thead>
-                        <tbody id="user-table-body">
-                            @forelse($users as $user)
-                                <tr>
-                                    <td class="px-4 py-2 border-b text-center">{{ $user->name }}</td>
-                                    <td class="px-4 py-2 border-b text-center">{{ $user->email }}</td>
-                                    <td class="px-4 py-2 border-b text-center">{{ $user->devices->count() }}</td>
-                                    <td class="px-4 py-2 border-b text-center">
-                                        @php
-                                            $online = $user->devices->where('status', 'online');
-                                            $offline = $user->devices->where('status', 'offline');
-                                            $pending = $user->devices->where('status', 'pending');
-                                            $onlineCount = $online->count();
-                                            $offlineCount = $offline->count();
-                                            $pendingCount = $pending->count();
-                                            $onlineNames = $online->pluck('nama_device')->filter()->implode(', ');
-                                            $offlineNames = $offline->pluck('nama_device')->filter()->implode(', ');
-                                            $pendingNames = $pending->pluck('nama_device')->filter()->implode(', ');
-                                        @endphp
-                                        <div class="flex flex-col items-center gap-1">
-                                            <span class="text-green-600 font-semibold" title="@if($onlineCount>0)Online: {{ $onlineNames }}@endif">Online: {{ $onlineCount }}</span>
-                                            @if($offlineCount > 0)
-                                                <span class="text-red-600 font-semibold" title="@if($offlineCount>0)Offline: {{ $offlineNames }}@endif">Offline: {{ $offlineCount }}</span>
-                                            @endif
-                                            @if($pendingCount > 0)
-                                                <span class="text-yellow-500 font-semibold" title="@if($pendingCount>0)Pending: {{ $pendingNames }}@endif">Pending: {{ $pendingCount }}</span>
-                                            @endif
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-2 border-b text-center">
-                                        @if($user->devices->count() > 0)
-                                            <ul>
-                                            @foreach($user->devices as $device)
-                                                <li>
-                                                    <span class="font-semibold">{{ $device->nama_device ?? 'Device' }}</span>:
-                                                    @if($device->latestReading)
-                                                        {{ $device->latestReading->gas ?? '-' }}
-                                                    @else
-                                                        -
-                                                    @endif
-                                                </li>
-                                            @endforeach
-                                            </ul>
+                                <tr class='hover:bg-[#fff7e6] transition'>
+                                    <td class='py-2 px-6 device-id'>{{ $device->id }}</td>
+                                    <td class='py-2 px-6 device-nama'>{{ $device->nama_device ?? '-' }}</td>
+                                    <td class='py-2 px-6 device-user'>{{ $device->user->name ?? '-' }}</td>
+                                    <td class='py-2 px-6'>{{ $device->lokasi ?? '-' }}</td>
+                                    <td class='py-2 px-6'>
+                                        @if($device->status === 'pending')
+                                            <span class="text-yellow-500 font-semibold">Pending</span>
+                                        @elseif($device->status === 'online')
+                                            <span class="text-green-600 font-semibold">Online</span>
                                         @else
-                                            -
+                                            <span class="text-red-600 font-semibold">Offline</span>
                                         @endif
                                     </td>
-                                    <td class="px-4 py-2 border-b text-center">
-                                        @if($user->devices->count() > 0)
-                                            <ul>
-                                            @foreach($user->devices as $device)
-                                                <li>
-                                                    <span class="font-semibold">{{ $device->nama_device ?? 'Device' }}</span>:
-                                                    @if($device->latestReading)
-                                                        {{ $device->latestReading->volume ?? '-' }}%
-                                                    @else
-                                                        -
-                                                    @endif
-                                                </li>
-                                            @endforeach
-                                            </ul>
-                                        @else
-                                            -
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-2 border-b text-center">
-                                        @if($user->devices->count() > 0)
-                                            <ul>
-                                            @foreach($user->devices as $device)
-                                                <li>
-                                                    <span class="font-semibold">{{ $device->nama_device ?? 'Device' }}</span>:
-                                                    @if(isset($device->cleaning_status))
-                                                        @if($device->cleaning_status === 'sudah')
-                                                            <span class="text-green-600 font-semibold">Sudah dibersihkan</span>
-                                                        @else
-                                                            <span class="text-red-600 font-semibold">Belum dibersihkan</span>
-                                                        @endif
-                                                    @else
-                                                        -
-                                                    @endif
-                                                </li>
-                                            @endforeach
-                                            </ul>
-                                        @else
-                                            -
-                                        @endif
+                                    <td class='py-2 px-6'>{{ $device->latestReading->gas ?? '-' }}</td>
+                                    <td class='py-2 px-6'>{{ isset($device->latestReading->volume) ? $device->latestReading->volume . '%' : '-' }}</td>
+                                    <td class='py-2 px-6'>
+                                        <form method="POST" action="{{ route('tukang.cleaning.update', $device->id) }}">
+                                            @csrf
+                                            <select name="status" class="border rounded px-2 py-1 text-sm font-semibold {{ isset($device->cleaning_status) && $device->cleaning_status === 'sudah' ? 'text-green-600' : 'text-red-600' }}" onchange="this.form.submit()">
+                                                <option value="belum" {{ (!isset($device->cleaning_status) || $device->cleaning_status === 'belum') ? 'selected' : '' }}>Belum</option>
+                                                <option value="sudah" {{ (isset($device->cleaning_status) && $device->cleaning_status === 'sudah') ? 'selected' : '' }}>Sudah</option>
+                                            </select>
+                                        </form>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center py-4 text-gray-400">Tidak ada data user.</td>
+                                    <td colspan="9" class="text-center py-4 text-gray-400">Data belum ada.</td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
             </div>
+            <!-- Data User section removed for tukang view -->
     </div>
 </div>
 @endsection
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const btn = document.getElementById('profileDropdownBtn');
@@ -260,9 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
-</script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
+
 // Chart initialization for tukang
 let tukangSensorChart;
 let tukangSelectedDeviceId = null;
@@ -272,7 +160,7 @@ let tukangDevicesCache = [];
     const canvasEl = document.getElementById('tukangSensorChart');
     if (!canvasEl || !canvasEl.getContext) {
         console.warn('tukangSensorChart canvas not found');
-        tukangSensorChart = { data: { labels: [], datasets: [{ label: 'Ketinggian Sampah (cm)', data: [] }] }, update: function() {} };
+        tukangSensorChart = { data: { labels: [], datasets: [{ label: 'tong (cm)', data: [] }] }, update: function() {} };
         return;
     }
     const ctx = canvasEl.getContext('2d');
@@ -281,7 +169,7 @@ let tukangDevicesCache = [];
         data: {
             labels: [],
             datasets: [{
-                label: 'Ketinggian Sampah (cm)',
+                label: 'tong (cm)',
                 data: [],
                 backgroundColor: 'rgba(246,201,14,0.2)',
                 borderColor: 'rgba(246,201,14,1)',
@@ -318,18 +206,23 @@ async function updateTukangChart(deviceId = null) {
     const devices = await fetchTukangAllDevices();
     tukangSensorChart.data.labels = sensorData.map(d => new Date(d.timestamp).toLocaleTimeString());
     tukangSensorChart.data.datasets[0].data = sensorData.map(d => d.value);
-    let label = 'Ketinggian Sampah (cm)';
+    let label = 'tong (cm)';
     if (deviceId && tukangDevicesCache.length > 0) {
         const device = tukangDevicesCache.find(d => d.id == deviceId);
         if (device && device.nama_device) label = device.nama_device + ' (cm)';
     }
     tukangSensorChart.data.datasets[0].label = label;
     tukangSensorChart.update();
-    let buzzerStatus = tukangDevicesCache[0]?.buzzer_status;
+    let buzzerStatus = deviceId && tukangDevicesCache.length > 0 ? tukangDevicesCache.find(d => d.id == deviceId)?.buzzer_status : 'Unknown';
     const buzzerEl = document.getElementById('tukangBuzzerStatus');
     if (buzzerEl) {
-        buzzerEl.textContent = buzzerStatus || 'Unknown';
-        buzzerEl.className = `px-6 py-3 rounded-lg text-white font-bold text-lg shadow ${String(buzzerStatus).toLowerCase() === 'on' ? 'bg-green-500' : String(buzzerStatus).toLowerCase() === 'off' ? 'bg-red-500' : 'bg-gray-400'}`;
+        if (buzzerStatus && buzzerStatus !== 'Unknown') {
+            buzzerEl.textContent = buzzerStatus;
+            buzzerEl.className = `px-6 py-3 rounded-lg text-white font-bold text-lg shadow ${String(buzzerStatus).toLowerCase() === 'on' ? 'bg-green-500' : 'bg-red-500'}`;
+            buzzerEl.style.display = 'inline-block';
+        } else {
+            buzzerEl.style.display = 'none';
+        }
     }
     const nameEl = document.getElementById('tukangSelectedDeviceName');
     if (nameEl && deviceId && tukangDevicesCache.length > 0) {
@@ -338,6 +231,7 @@ async function updateTukangChart(deviceId = null) {
     }
 }
 
+// Initialize with first device if available
 fetchTukangAllDevices().then(devices => {
     if (devices.length > 0) {
         tukangSelectedDeviceId = devices[0].id;
@@ -345,33 +239,25 @@ fetchTukangAllDevices().then(devices => {
     }
 });
 
-// Add click handlers to device rows
+// Add click handlers to device rows to select and show their graph
 setTimeout(() => {
     const rows = document.querySelectorAll('#deviceTableBody tr');
     rows.forEach(row => {
         row.addEventListener('click', async () => {
-            const deviceId = row.querySelector('.device-id')?.textContent;
+            const deviceId = row.querySelector('.device-id')?.textContent?.trim();
             if (deviceId) {
                 tukangSelectedDeviceId = parseInt(deviceId);
                 await updateTukangChart(tukangSelectedDeviceId);
+                // Highlight selected row
+                document.querySelectorAll('#deviceTableBody tr').forEach(r => r.classList.remove('bg-[#fff7e6]', 'font-bold'));
+                row.classList.add('bg-[#fff7e6]', 'font-bold');
             }
         });
     });
 }, 500);
-</script>
-@endsection
-@section('scripts')
-<script>
-document.getElementById('search-user')?.addEventListener('input', function() {
-    const search = this.value.toLowerCase();
-    document.querySelectorAll('#user-table-body tr').forEach(function(row) {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(search) ? '' : 'none';
-    });
-});
-</script>
-@section('scripts')
-<script>
+
+// Search filters
+
 document.getElementById('search-user-tong')?.addEventListener('input', function() {
     const search = this.value.toLowerCase();
     document.querySelectorAll('#deviceTableBody tr').forEach(function(row) {
@@ -382,5 +268,4 @@ document.getElementById('search-user-tong')?.addEventListener('input', function(
     });
 });
 </script>
-@endsection
 @endsection

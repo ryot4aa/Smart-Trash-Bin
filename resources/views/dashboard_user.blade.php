@@ -104,28 +104,22 @@
                     </div>
                 @endif
             </div>
-            <div class="bg-white rounded-2xl shadow p-6">
+            <div class="bg-white rounded-2xl shadow p-6 mt-10">
                 <h2 class="text-xl font-semibold mb-4 text-[#f6c90e] text-center">Daftar Tong Sampah Anda</h2>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full table-fixed bg-white rounded-2xl overflow-hidden shadow-lg">
-                        <colgroup>
-                            <col style="width: 10%">
-                            <col style="width: 30%">
-                            <col style="width: 40%">
-                            <col style="width: 20%">
-                        </colgroup>
-                        <thead class="bg-[#f6c90e]">
+                <div class="overflow-x-auto max-h-96">
+                    <table class="w-full bg-white rounded-lg overflow-hidden">
+                        <thead class="bg-[#f6c90e] sticky top-0">
                             <tr>
-                                <th class="py-3 px-4 text-left text-xs font-bold text-[#222b45] uppercase tracking-wider">ID</th>
-                                <th class="py-3 px-4 text-left text-xs font-bold text-[#222b45] uppercase tracking-wider">Nama</th>
-                                <th class="py-3 px-4 text-left text-xs font-bold text-[#222b45] uppercase tracking-wider">Lokasi</th>
-                                <th class="py-3 px-4 text-left text-xs font-bold text-[#222b45] uppercase tracking-wider">STATUS</th>
-                                <th class="py-3 px-4 text-left text-xs font-bold text-[#222b45] uppercase tracking-wider">Kadar Gas</th>
-                                <th class="py-3 px-4 text-left text-xs font-bold text-[#222b45] uppercase tracking-wider">Presentase Sampah</th>
-                                <th class="py-3 px-4 text-left text-xs font-bold text-[#222b45] uppercase tracking-wider">Cleaning Status</th>
+                                <th class="py-2 px-4 text-left text-xs font-bold text-[#222b45] uppercase">ID</th>
+                                <th class="py-2 px-4 text-left text-xs font-bold text-[#222b45] uppercase">Nama</th>
+                                <th class="py-2 px-4 text-left text-xs font-bold text-[#222b45] uppercase">Lokasi</th>
+                                <th class="py-2 px-4 text-left text-xs font-bold text-[#222b45] uppercase">Status</th>
+                                <th class="py-2 px-4 text-left text-xs font-bold text-[#222b45] uppercase">Gas</th>
+                                <th class="py-2 px-4 text-left text-xs font-bold text-[#222b45] uppercase">Sampah %</th>
+                                <th class="py-2 px-4 text-left text-xs font-bold text-[#222b45] uppercase">Clean</th>
                             </tr>
                         </thead>
-                        <tbody id="userDeviceTableBody" class="divide-y divide-blue-100">
+                        <tbody id="userDeviceTableBody" class="divide-y divide-gray-200">
                             <!-- Data akan di-load via JavaScript -->
                         </tbody>
                     </table>
@@ -178,10 +172,43 @@
         }
         let userDevicesCache = [];
         async function fetchUserDevices() {
-            const response = await fetch('/api/my-devices', { credentials: 'same-origin' });
-            const data = await response.json();
-            userDevicesCache = data;
-            return data;
+            // Try multiple endpoints in order until we get devices
+            const tryEndpoints = [
+                '/api/my-devices',
+                '/api/dashboard/data',
+                '/api/devices'
+            ];
+
+            for (const url of tryEndpoints) {
+                try {
+                    const resp = await fetch(url, { credentials: 'same-origin' });
+                    console.debug('fetchUserDevices try', url, resp.status);
+                    if (!resp.ok) continue;
+                    const payload = await resp.json();
+                    console.debug('fetchUserDevices payload from', url, payload);
+                    // Normalize possible shapes
+                    let devices = [];
+                    if (Array.isArray(payload)) devices = payload;
+                    else if (Array.isArray(payload?.data)) devices = payload.data;
+                    else if (Array.isArray(payload?.devices)) devices = payload.devices;
+                    // Some endpoints return object with devices inside nested key
+                    if (devices.length > 0) {
+                        userDevicesCache = devices;
+                        return devices;
+                    }
+                    // If payload itself looks like a single device object (unlikely), wrap it
+                    if (payload && payload.id) {
+                        userDevicesCache = [payload];
+                        return [payload];
+                    }
+                } catch (e) {
+                    console.warn('fetchUserDevices error for', url, e);
+                    continue;
+                }
+            }
+            // Nothing returned, clear cache
+            userDevicesCache = [];
+            return [];
         }
         async function fetchLedStatus(deviceId = null) {
             let url = '/api/devices';
@@ -195,7 +222,7 @@
             if (!canvasEl || !canvasEl.getContext) {
                 console.warn('sensorChart canvas not found — chart disabled');
                 sensorChart = {
-                    data: { labels: [], datasets: [{ label: 'Ketinggian Sampah (cm)', data: [] }] },
+                    data: { labels: [], datasets: [{ label: 'tong (cm)', data: [] }] },
                     update: function() {}
                 };
                 return;
@@ -206,7 +233,7 @@
                 data: {
                     labels: [],
                     datasets: [{
-                        label: 'Ketinggian Sampah (cm)',
+                        label: 'tong (cm)',
                         data: [],
                         backgroundColor: 'rgba(246,201,14,0.2)',
                         borderColor: 'rgba(246,201,14,1)',
@@ -243,7 +270,7 @@
             sensorChart.data.labels = sensorData.map(d => new Date(d.timestamp).toLocaleTimeString());
             sensorChart.data.datasets[0].data = sensorData.map(d => d.value);
             // Update label grafik sesuai nama tong
-            let label = 'Ketinggian Sampah (cm)';
+            let label = 'tong (cm)';
             if (deviceId && userDevicesCache.length > 0) {
                 const device = userDevicesCache.find(d => d.id == deviceId);
                 if (device && device.nama_device) {
@@ -260,8 +287,13 @@
             }
             const buzzerStatusElem = document.getElementById('buzzerStatus');
             if (buzzerStatusElem) {
-                buzzerStatusElem.textContent = buzzerStatus;
-                buzzerStatusElem.className = `px-6 py-3 rounded-lg text-white font-bold text-lg shadow ${String(buzzerStatus).toLowerCase() === 'on' ? 'bg-green-500' : String(buzzerStatus).toLowerCase() === 'off' ? 'bg-red-500' : 'bg-gray-400'}`;
+                if (buzzerStatus && buzzerStatus !== 'Unknown') {
+                    buzzerStatusElem.textContent = buzzerStatus;
+                    buzzerStatusElem.className = `px-6 py-3 rounded-lg text-white font-bold text-lg shadow ${String(buzzerStatus).toLowerCase() === 'on' ? 'bg-green-500' : 'bg-red-500'}`;
+                    buzzerStatusElem.style.display = 'inline-block';
+                } else {
+                    buzzerStatusElem.style.display = 'none';
+                }
             }
             // Update selected device name badge
             const selectedNameEl = document.getElementById('selectedDeviceName');
@@ -269,7 +301,7 @@
                 const deviceObj = userDevicesCache.find(d => d.id == deviceId);
                 selectedNameEl.textContent = deviceObj?.nama_device ?? '-';
             }
-            ledStatusElem.className = `px-6 py-3 rounded-lg text-white font-bold text-lg shadow ${String(ledStatus).toLowerCase() === 'on' ? 'bg-green-500' : String(ledStatus).toLowerCase() === 'off' ? 'bg-red-500' : 'bg-gray-400'}`;
+            // removed legacy ledStatusElement usage
         }
         // Klik baris tabel untuk update grafik
         async function updateUserDeviceTable() {
@@ -277,6 +309,13 @@
             const devices = await fetchUserDevices();
             const tbody = document.getElementById('userDeviceTableBody');
             tbody.innerHTML = '';
+            if (!devices || devices.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td class='py-2 px-6 text-center' colspan='7'>Tidak ada device.</td>`;
+                tbody.appendChild(tr);
+                return;
+            }
+
             (devices || []).forEach(device => {
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-[#fff7e6] transition cursor-pointer';

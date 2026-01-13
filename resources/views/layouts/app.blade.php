@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>SmartBin Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
@@ -28,33 +29,45 @@
 <body class="bg-[#fafbfc] dark:bg-[#18181b] min-h-screen">
     @yield('content')
     <script>
-        // Dark mode toggle logic
-        const darkModeToggle = document.getElementById('darkModeToggle');
-        const darkModeIcon = document.getElementById('darkModeIcon');
-        function setDarkMode(on) {
-            if (on) {
-                document.documentElement.classList.add('dark');
-                localStorage.setItem('darkMode', '1');
-                darkModeIcon.textContent = '☀️';
-                darkModeToggle.textContent = 'Light Mode';
-                darkModeToggle.prepend(darkModeIcon);
-            } else {
-                document.documentElement.classList.remove('dark');
-                localStorage.setItem('darkMode', '0');
-                darkModeIcon.textContent = '🌙';
-                darkModeToggle.textContent = 'Dark Mode';
-                darkModeToggle.prepend(darkModeIcon);
+        // Dark mode toggle logic (safe if toggle element missing)
+        (function() {
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            let darkModeIcon = document.getElementById('darkModeIcon');
+            if (!darkModeIcon) {
+                darkModeIcon = document.createElement('span');
+                darkModeIcon.id = 'darkModeIcon';
             }
-        }
-        darkModeToggle.addEventListener('click', function() {
-            setDarkMode(!document.documentElement.classList.contains('dark'));
-        });
-        // On load, set mode from localStorage
-        if (localStorage.getItem('darkMode') === '1') {
-            setDarkMode(true);
-        } else {
-            setDarkMode(false);
-        }
+            function setDarkMode(on) {
+                if (on) {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('darkMode', '1');
+                    darkModeIcon.textContent = '☀️';
+                    if (darkModeToggle) {
+                        darkModeToggle.textContent = 'Light Mode';
+                        darkModeToggle.prepend(darkModeIcon);
+                    }
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('darkMode', '0');
+                    darkModeIcon.textContent = '🌙';
+                    if (darkModeToggle) {
+                        darkModeToggle.textContent = 'Dark Mode';
+                        darkModeToggle.prepend(darkModeIcon);
+                    }
+                }
+            }
+            if (darkModeToggle) {
+                darkModeToggle.addEventListener('click', function() {
+                    setDarkMode(!document.documentElement.classList.contains('dark'));
+                });
+            }
+            // On load, set mode from localStorage (default to light)
+            if (localStorage.getItem('darkMode') === '1') {
+                setDarkMode(true);
+            } else {
+                setDarkMode(false);
+            }
+        })();
     </script>
     @yield('scripts')
 </body>

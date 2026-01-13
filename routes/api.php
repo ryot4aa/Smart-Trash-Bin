@@ -57,25 +57,77 @@ Route::post('/esp32/test', function(Request $request) {
 
 // ESP32 ENDPOINT - Kirim data sensor (tanpa authentication)
 Route::post('/esp32/sensor', function(Request $request) {
-    Log::info('Data ESP32:', $request->all());
+    Log::info('Data ESP32 diterima:', $request->all());
     
-    // Simpan ke database (volume & gas optional untuk testing)
-    if ($request->has('device_id')) {
+    try {
+        // Validasi device_id
+        if (!$request->has('device_id')) {
+            Log::warning('ESP32: device_id tidak ditemukan');
+            return response()->json([
+                'status' => 'error',
+                'message' => 'device_id diperlukan'
+            ], 400);
+        }
+        
+        $device_id = $request->device_id;
+        
+        // Cek device ada atau tidak
+        $device = Device::find($device_id);
+        if (!$device) {
+            Log::warning('ESP32: Device ID '.$device_id.' tidak ditemukan');
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Device tidak ditemukan'
+            ], 404);
+        }
+        
+        // Simpan data sensor dengan validasi tipe data
+        $volume = (int) ($request->volume ?? 0);
+        $gas = isset($request->gas) ? (int) $request->gas : null;
+        
+        // Pastikan nilai dalam range valid (0-255)
+        $volume = max(0, min(255, $volume));
+        if ($gas !== null) {
+            $gas = max(0, min(255, $gas));
+        }
+        
         SensorReading::create([
-            'device_id' => $request->device_id,
-            'volume' => $request->volume ?? 0,  // Default 0 jika tidak ada
-            'gas' => $request->gas ?? 0,        // Default 0 jika tidak ada
+            'device_id' => $device_id,
+            'volume' => $volume,
+            'gas' => $gas,
             'reading_time' => now()
         ]);
         
         // Update status device jadi online
-        Device::where('id', $request->device_id)->update(['status' => 'online']);
+        Device::where('id', $device_id)->update(['status' => 'online', 'updated_at' => now()]);
+        
+        Log::info('Data sensor tersimpan:', [
+            'device_id' => $device_id,
+            'volume' => $volume,
+            'gas' => $gas
+        ]);
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Data diterima dan tersimpan',
+            'device_id' => $device_id,
+            'volume' => $volume,
+            'gas' => $gas
+        ], 200);
+        
+    } catch (\Exception $e) {
+        Log::error('Error ESP32 sensor:', [
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'request' => $request->all()
+        ]);
+        
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Gagal menyimpan data sensor: '.$e->getMessage()
+        ], 500);
     }
-    
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Data diterima'
-    ]);
 });
 
 // Endpoint untuk ambil data sensor berdasarkan device_id (untuk dashboard user)

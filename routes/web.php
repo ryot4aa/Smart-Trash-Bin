@@ -49,4 +49,26 @@ Route::middleware('auth')->group(function () {
 
     // Upload profile photo (admin/user)
     Route::post('/profile/upload-photo', [App\Http\Controllers\Api\AuthController::class, 'uploadPhoto'])->name('profile.uploadPhoto');
+
+    // Temporary debug route: create a test device for the currently authenticated user
+    Route::get('/dev/create-my-device', function() {
+        if (app()->environment('production')) {
+            abort(404);
+        }
+        $user = auth()->user();
+        if (! $user) {
+            return redirect()->route('login.form');
+        }
+        $device = Device::create([
+            'user_id' => $user->id,
+            'nama_device' => 'AutoDevice ' . time(),
+            'lokasi' => 'Auto-created',
+            'tipe' => 'smartbin',
+            'status' => 'online',
+            'battery' => 100,
+            'buzzer_status' => 'off',
+            'cleaning_status' => 'belum',
+        ]);
+        return redirect()->back()->with('success', 'Device created ID: ' . $device->id);
+    })->name('dev.createMyDevice');
 });
